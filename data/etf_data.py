@@ -1,7 +1,6 @@
 import pandas as pd
 import yfinance as yf
-import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 
 ETF_CATALOG = {
     "CW8": {
@@ -11,7 +10,7 @@ ETF_CATALOG = {
         "ter": 0.0038,
         "pea": True,
         "ticker_yf": "CW8.PA",
-        "description": "Réplique les 1 500+ plus grandes entreprises mondiales des pays développés."
+        "description": "Réplique les 1500+ plus grandes entreprises mondiales des pays développés."
     },
     "PS20": {
         "nom": "Amundi S&P 500",
@@ -32,7 +31,7 @@ ETF_CATALOG = {
         "description": "Réplique les grandes et moyennes capitalisations européennes."
     },
     "OBLI": {
-        "nom": "Lyxor Obligations d'État Euro",
+        "nom": "Lyxor Obligations d'Etat Euro",
         "indice": "EuroMTS Govt Bond",
         "gestionnaire": "Lyxor (Amundi)",
         "ter": 0.0017,
@@ -42,9 +41,8 @@ ETF_CATALOG = {
     }
 }
 
-@st.cache_data(ttl=3600)
+
 def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataFrame:
-    """Télécharge les données historiques via yfinance."""
     if end is None:
         end = datetime.today().strftime("%Y-%m-%d")
     try:
@@ -52,23 +50,8 @@ def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataF
         if df.empty:
             return pd.DataFrame()
         df = df[["Close", "Volume"]].copy()
-        df.index = pd.to_datetime(df.index)
         df.columns = ["prix_cloture", "volume"]
-        df = df.dropna()
-        return df
-    except Exception as e:
-        st.error(f"Erreur lors du téléchargement des données : {e}")
+        df.index = pd.to_datetime(df.index)
+        return df.dropna()
+    except Exception:
         return pd.DataFrame()
-
-def get_etf_info(ticker: str) -> dict:
-    """Retourne les métadonnées d'un ETF depuis le catalogue."""
-    return ETF_CATALOG.get(ticker.upper(), None)
-
-def format_currency(value: float, decimals: int = 2) -> str:
-    """Formate un nombre en euros."""
-    return f"{value:,.{decimals}f} €".replace(",", " ")
-
-def format_percent(value: float, decimals: int = 2) -> str:
-    """Formate un pourcentage."""
-    sign = "+" if value > 0 else ""
-    return f"{sign}{value:.{decimals}f} %"
