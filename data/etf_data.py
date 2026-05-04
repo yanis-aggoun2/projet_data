@@ -1,45 +1,43 @@
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
+import psycopg2
+import os
+from dotenv import load_dotenv
 
-ETF_CATALOG = {
-    "CW8": {
-        "nom": "Amundi MSCI World",
-        "indice": "MSCI World",
-        "gestionnaire": "Amundi",
-        "ter": 0.0038,
-        "pea": True,
-        "ticker_yf": "CW8.PA",
-        "description": "Réplique les 1500+ plus grandes entreprises mondiales des pays développés."
-    },
-    "PS20": {
-        "nom": "Amundi S&P 500",
-        "indice": "S&P 500",
-        "gestionnaire": "Amundi",
-        "ter": 0.0015,
-        "pea": True,
-        "ticker_yf": "500.PA",
-        "description": "Réplique les 500 plus grandes entreprises américaines."
-    },
-    "ESE": {
-        "nom": "iShares MSCI Europe",
-        "indice": "MSCI Europe",
-        "gestionnaire": "BlackRock (iShares)",
-        "ter": 0.0012,
-        "pea": False,
-        "ticker_yf": "ESEU.AS",
-        "description": "Réplique les grandes et moyennes capitalisations européennes."
-    },
-    "OBLI": {
-        "nom": "Lyxor Obligations d'Etat Euro",
-        "indice": "EuroMTS Govt Bond",
-        "gestionnaire": "Lyxor (Amundi)",
-        "ter": 0.0017,
-        "pea": False,
-        "ticker_yf": "MTH.PA",
-        "description": "Réplique les obligations souveraines de la zone euro."
-    }
-}
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+
+def get_etf_catalog() -> dict:
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT code, nom, indice, gestionnaire, ter, pea, ticker_yf, description
+            FROM etf
+        """)
+        rows = cursor.fetchall()
+        catalog = {}
+        for row in rows:
+            code, nom, indice, gestionnaire, ter, pea, ticker_yf, description = row
+            catalog[code] = {
+                "nom": nom,
+                "indice": indice,
+                "gestionnaire": gestionnaire,
+                "ter": float(ter),
+                "pea": bool(pea),
+                "ticker_yf": ticker_yf,
+                "description": description
+            }
+        return catalog
+    finally:
+        conn.close()
 
 
 def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataFrame:
@@ -55,3 +53,11 @@ def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataF
         return df.dropna()
     except Exception:
         return pd.DataFrame()
+
+
+# Chargement au démarrage
+try:
+    ETF_CATALOG = get_etf_catalog()
+except Exception as e:
+    print(f"Erreur DB : {e}")
+    ETF_CATALOG = {}
