@@ -4,67 +4,22 @@ import pandas as pd
 from datetime import datetime, timedelta
 import sys
 import os
+from utils.style import load_css, dark_layout, _BG, _PAPER, _GRID, _TICK
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.etf_data import ETF_CATALOG, get_historical_data
+from data.etf_data import get_etf_catalog, get_historical_data
 
-st.set_page_config(page_title="Explorateur ETF", page_icon="🔍", layout="wide")
 
-# ── Dark theme CSS ────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, .stApp { background-color: #060e1c !important; font-family: 'Inter', sans-serif !important; }
-.main .block-container { padding-top: 2rem !important; padding-left: 2.5rem !important; padding-right: 2.5rem !important; max-width: 1400px !important; }
-[data-testid="stSidebar"] { background-color: #08111f !important; border-right: 1px solid #162035 !important; }
-[data-testid="stSidebar"] * { color: #7a90a8 !important; }
-h1, h2, h3, h4 { color: #f1f5f9 !important; font-weight: 700 !important; }
-p, li, .stMarkdown p { color: #94a3b8 !important; }
-hr, [data-testid="stDivider"] { border-color: #162035 !important; }
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(145deg, #0c1928, #0d2040) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 14px !important;
-}
-[data-testid="metric-container"] {
-    background: linear-gradient(145deg, #0c1928, #0e2038) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 12px !important;
-    padding: 20px 24px !important; box-shadow: 0 4px 24px rgba(0,0,0,0.45) !important;
-}
-[data-testid="stMetricValue"] { color: #f1f5f9 !important; font-weight: 700 !important; font-size: 24px !important; }
-[data-testid="stMetricLabel"] { color: #3f5470 !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important; }
-.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
-    border: 1px solid #3b82f6 !important; color: #fff !important;
-    font-weight: 600 !important; border-radius: 8px !important;
-}
-.stDataFrame { border: 1px solid #1a2e48 !important; border-radius: 12px !important; overflow: hidden !important; }
-[data-testid="stAlert"] { border-radius: 10px !important; }
-[data-testid="stSelectbox"] > div > div { background-color: #0c1928 !important; border-color: #1a2e48 !important; color: #c5d4e8 !important; border-radius: 8px !important; }
-</style>
-""", unsafe_allow_html=True)
+load_css()
 
-# ── Constantes graphique sombre ───────────────────────────────────────────────
-_BG    = "#0c1928"
-_PAPER = "#060e1c"
-_GRID  = "#162035"
-_TICK  = "#3f5470"
-
-def dark_layout(title="", height=400):
-    return dict(
-        title=dict(text=title, font=dict(color="#c5d4e8", size=14), x=0.01),
-        plot_bgcolor=_BG, paper_bgcolor=_PAPER,
-        font=dict(color=_TICK, family="Inter, sans-serif", size=12),
-        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        legend=dict(bgcolor="rgba(12,25,40,0.95)", bordercolor=_GRID, borderwidth=1,
-                    font=dict(color="#7a90a8", size=12)),
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor="#0e2038", bordercolor=_GRID, font=dict(color="#f1f5f9")),
-        height=height, margin=dict(l=0, r=0, t=44, b=0),
-    )
-
+# Chargement catalogue
+ETF_CATALOG = get_etf_catalog()
+if not ETF_CATALOG:
+    st.error("Impossible de charger les ETF depuis la base de données.")
+    st.stop()
+    
 # ── En-tête ───────────────────────────────────────────────────────────────────
-st.markdown("# 🔍 Explorateur d'ETF")
+st.markdown("# Explorateur d'ETF")
 st.caption("Module A — Analyse et comparaison d'ETF sur données historiques")
 st.divider()
 
@@ -180,24 +135,31 @@ if st.button("Lancer la comparaison", type="primary"):
             perf = (df["prix_cloture"].iloc[-1] / df["prix_cloture"].iloc[0] - 1) * 100
             vol  = df["prix_cloture"].pct_change().std() * (252 ** 0.5) * 100
             return {
-                "ETF": t, "Nom": info["nom"],
-                "Performance": f"{perf:+.2f}%",
-                "Volatilité ann.": f"{vol:.2f}%",
-                "TER annuel": f"{info['ter']*100:.2f}%",
-                "PEA": "✅ Oui" if info["pea"] else "❌ Non",
-            }
+               "ticker": t,
+               "nom": info["nom"],
+               "perf": perf,
+               "vol": vol,
+               "ter": info["ter"] * 100,
+               "pea": info["pea"],
+           }
 
-        st.dataframe(
-            pd.DataFrame([stats(df_a, ETF_CATALOG[etf_a], etf_a),
-                          stats(df_b, ETF_CATALOG[etf_b], etf_b)]),
-            use_container_width=True, hide_index=True,
-        )
+        s_a = stats(df_a, ETF_CATALOG[etf_a], etf_a)
+        s_b = stats(df_b, ETF_CATALOG[etf_b], etf_b)
+ 
+        rows_html = ""
+        for s in [s_a, s_b]:
+            perf_color = "#10b981" if s["perf"] >= 0 else "#ef4444"
+            ter_class = "low" if s["ter"] < 0.20 else "mid" if s["ter"] < 0.40 else "high"
+            pea_badge = '<span class="pea-yes">✓ PEA</span>' if s["pea"] else '<span class="pea-no">Non éligible</span>'
+            rows_html += f'<tr><td><span class="etf-ticker">{s["ticker"]}</span></td><td><div class="etf-nom">{s["nom"]}</div></td><td style="color:{perf_color};font-weight:700;font-family:monospace;">{s["perf"]:+.2f}%</td><td style="color:#c5d4e8;font-family:monospace;">{s["vol"]:.2f}%</td><td><span class="etf-ter {ter_class}">{s["ter"]:.2f}%</span></td><td>{pea_badge}</td></tr>'
+
+        st.markdown(f'<table class="etf-table"><thead><tr><th>Ticker</th><th>Nom</th><th>Performance</th><th>Volatilité ann.</th><th>TER annuel</th><th>Éligibilité</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
     else:
         st.error("Impossible de charger les données pour un ou plusieurs ETF.")
 
 # Ajouter un nouvel ETF
 st.markdown("---")
-st.markdown("### ➕ Ajouter un nouvel ETF")
+st.markdown("### :material/add_circle: Ajouter un nouvel ETF")
 
 with st.expander("Formulaire d'ajout"):
     st.info("Le ticker Yahoo Finance est utilisé pour récupérer les données. Exemple : CW8.PA, IWDA.AS, SP5.PA")
@@ -215,7 +177,7 @@ with st.expander("Formulaire d'ajout"):
         new_pea = st.selectbox("Eligible PEA", ["Non", "Oui"]) == "Oui"
         new_description = st.text_area("Description", height=80)
 
-    if st.button("💾 Enregistrer l'ETF", type="primary"):
+    if st.button("Enregistrer l'ETF", type="primary"):
         if not new_code or not new_nom or not new_ticker_yf:
             st.error("Les champs Code, Nom et Ticker Yahoo Finance sont obligatoires.")
         elif new_code in ETF_CATALOG:
@@ -238,8 +200,10 @@ with st.expander("Formulaire d'ajout"):
                     """, (new_code, new_nom, new_indice, new_gestionnaire,
                           new_ter / 100, new_pea, new_ticker_yf, new_description))
                     conn.commit()
+                    get_etf_catalog.clear()
                     conn.close()
-                    st.success(f"✅ ETF '{new_code} — {new_nom}' ajouté ! Rechargez la page pour le voir dans la liste.")
+                    st.success(f"✅ ETF '{new_code} — {new_nom}' ajouté !")
                     st.balloons()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Erreur lors de l'insertion : {e}")

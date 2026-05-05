@@ -4,6 +4,7 @@ from datetime import datetime
 import psycopg2
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
 load_dotenv()
 
@@ -14,6 +15,7 @@ def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
+@st.cache_data(ttl=300)  # Après 5 minutes (ttl=300) → le cache expire et recharge depuis la DB
 def get_etf_catalog() -> dict:
     conn = get_connection()
     try:
@@ -39,7 +41,7 @@ def get_etf_catalog() -> dict:
     finally:
         conn.close()
 
-
+@st.cache_data(ttl=900)  # cache 15 minutes
 def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataFrame:
     if end is None:
         end = datetime.today().strftime("%Y-%m-%d")
@@ -54,10 +56,3 @@ def get_historical_data(ticker_yf: str, start: str, end: str = None) -> pd.DataF
     except Exception:
         return pd.DataFrame()
 
-
-# Chargement au démarrage
-try:
-    ETF_CATALOG = get_etf_catalog()
-except Exception as e:
-    print(f"Erreur DB : {e}")
-    ETF_CATALOG = {}

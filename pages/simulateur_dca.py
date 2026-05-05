@@ -6,70 +6,20 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.etf_data import ETF_CATALOG, get_historical_data
+from data.etf_data import get_etf_catalog, get_historical_data
 from utils.dca_engine import run_dca_simulation, run_dca_sans_frais, calcul_livret_a, calcul_metriques
+from utils.style import load_css, dark_layout, _BG, _PAPER, _GRID, _TICK
 
-st.set_page_config(page_title="Simulateur DCA", page_icon="📊", layout="wide")
 
-# ── Dark theme CSS ────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, .stApp { background-color: #060e1c !important; font-family: 'Inter', sans-serif !important; }
-.main .block-container { padding-top: 2rem !important; padding-left: 2.5rem !important; padding-right: 2.5rem !important; max-width: 1400px !important; }
-[data-testid="stSidebar"] { background-color: #08111f !important; border-right: 1px solid #162035 !important; }
-[data-testid="stSidebar"] * { color: #7a90a8 !important; }
-h1, h2, h3, h4 { color: #f1f5f9 !important; font-weight: 700 !important; }
-p, li, .stMarkdown p { color: #94a3b8 !important; }
-hr, [data-testid="stDivider"] { border-color: #162035 !important; }
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(145deg, #0c1928, #0d2040) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 14px !important;
-}
-[data-testid="metric-container"] {
-    background: linear-gradient(145deg, #0c1928, #0e2038) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 12px !important;
-    padding: 20px 24px !important; box-shadow: 0 4px 24px rgba(0,0,0,0.45) !important;
-}
-[data-testid="stMetricValue"] { color: #f1f5f9 !important; font-weight: 700 !important; font-size: 24px !important; }
-[data-testid="stMetricLabel"] { color: #3f5470 !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important; }
-[data-testid="stMetricDelta"] { font-size: 13px !important; font-weight: 600 !important; }
-.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
-    border: 1px solid #3b82f6 !important; color: #fff !important;
-    font-weight: 600 !important; border-radius: 8px !important;
-    box-shadow: 0 4px 16px rgba(37,99,235,0.3) !important;
-}
-.stButton > button[kind="primary"]:hover { box-shadow: 0 6px 22px rgba(37,99,235,0.5) !important; transform: translateY(-1px) !important; }
-.stDataFrame { border: 1px solid #1a2e48 !important; border-radius: 12px !important; overflow: hidden !important; }
-[data-testid="stAlert"] { border-radius: 10px !important; }
-[data-testid="stExpander"] { border: 1px solid #1a2e48 !important; border-radius: 10px !important; background-color: #0c1928 !important; }
-[data-testid="stSelectbox"] > div > div { background-color: #0c1928 !important; border-color: #1a2e48 !important; color: #c5d4e8 !important; border-radius: 8px !important; }
-.stNumberInput > div > div > input, .stDateInput > div > div > input { background-color: #0c1928 !important; border-color: #1a2e48 !important; color: #c5d4e8 !important; }
-</style>
-""", unsafe_allow_html=True)
+load_css()
 
-# ── Constantes graphique sombre ───────────────────────────────────────────────
-_BG    = "#0c1928"
-_PAPER = "#060e1c"
-_GRID  = "#162035"
-_TICK  = "#3f5470"
+# Chargement catalogue
+ETF_CATALOG = get_etf_catalog()
+if not ETF_CATALOG:
+    st.error("Impossible de charger les ETF depuis la base de données.")
+    st.stop()
 
-def dark_layout(title="", height=450):
-    return dict(
-        title=dict(text=title, font=dict(color="#c5d4e8", size=14), x=0.01),
-        plot_bgcolor=_BG, paper_bgcolor=_PAPER,
-        font=dict(color=_TICK, family="Inter, sans-serif", size=12),
-        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        legend=dict(bgcolor="rgba(12,25,40,0.95)", bordercolor=_GRID, borderwidth=1,
-                    font=dict(color="#7a90a8", size=12)),
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor="#0e2038", bordercolor=_GRID, font=dict(color="#f1f5f9")),
-        height=height, margin=dict(l=0, r=0, t=44, b=0),
-    )
-
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# Sidebar
 with st.sidebar:
     st.markdown("## Paramètres")
 
@@ -90,14 +40,14 @@ with st.sidebar:
     date_debut = st.date_input("Date de début", value=date(2015, 1, 1), max_value=today)
     date_fin   = st.date_input("Date de fin",   value=date(2024, 12, 31), max_value=today)
 
-    lancer = st.button("🚀 Lancer la simulation", type="primary", use_container_width=True)
+    lancer = st.button("Lancer la simulation", type="primary", use_container_width=True)
 
-# ── En-tête ───────────────────────────────────────────────────────────────────
-st.markdown("# 📊 Simulateur DCA")
+# En-tête
+st.markdown("# Simulateur DCA")
 st.caption("Module B — Investissement programmé sur données historiques réelles")
 st.divider()
 
-# ── Résultats ─────────────────────────────────────────────────────────────────
+# Résultats
 if lancer:
     if date_debut >= date_fin:
         st.error("La date de début doit être antérieure à la date de fin.")
@@ -186,11 +136,15 @@ if lancer:
     st.info("⚠️ Le backtesting illustre les performances passées. Il ne garantit pas les performances futures.")
 
     with st.expander("Tableau détaillé mois par mois"):
-        st.dataframe(df_sim.round(2), use_container_width=True, hide_index=True)
+       rows_html = ""
+       for _, row in df_sim.iterrows():
+           rows_html += f'<tr><td style="color:#7a90a8;font-size:0.82rem;">{row["date"].strftime("%b %Y")}</td><td style="color:#f1f5f9;font-weight:600;font-family:monospace;">{row["prix"]:,.2f} €</td><td style="color:#60a5fa;font-family:monospace;">{row["parts_achetees"]:,.4f}</td><td style="color:#60a5fa;font-family:monospace;">{row["parts_cumulees"]:,.4f}</td><td style="color:#10b981;font-weight:700;font-family:monospace;">{row["valeur_portefeuille"]:,.2f} €</td><td style="color:#c5d4e8;font-family:monospace;">{row["capital_investi"]:,.2f} €</td><td style="color:#ef4444;font-family:monospace;">{row["frais_cumules"]:,.2f} €</td></tr>'
+
+       st.markdown(f'<table class="etf-table"><thead><tr><th>Mois</th><th>Prix</th><th>Parts achetées</th><th>Parts cumulées</th><th>Valeur portefeuille</th><th>Capital investi</th><th>Frais cumulés</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
 
 else:
     with st.container(border=True):
-        st.markdown("### 📊 Prêt à simuler")
+        st.markdown("### Prêt à simuler")
         st.markdown(
             "Configurez vos paramètres dans le **panneau latéral gauche** "
             "puis cliquez sur **Lancer la simulation** pour visualiser l'évolution de votre portefeuille."

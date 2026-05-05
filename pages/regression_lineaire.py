@@ -7,68 +7,19 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from data.etf_data import ETF_CATALOG, get_historical_data
 from utils.regression_engine import run_regression
 
-st.set_page_config(page_title="Régression Linéaire", page_icon="📉", layout="wide")
+from data.etf_data import get_etf_catalog, get_historical_data
+from utils.style import load_css, dark_layout, _BG, _PAPER, _GRID, _TICK
 
-# ── Dark theme CSS ────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, .stApp { background-color: #060e1c !important; font-family: 'Inter', sans-serif !important; }
-.main .block-container { padding-top: 2rem !important; padding-left: 2.5rem !important; padding-right: 2.5rem !important; max-width: 1400px !important; }
-[data-testid="stSidebar"] { background-color: #08111f !important; border-right: 1px solid #162035 !important; }
-[data-testid="stSidebar"] * { color: #7a90a8 !important; }
-h1, h2, h3, h4 { color: #f1f5f9 !important; font-weight: 700 !important; }
-p, li, .stMarkdown p { color: #94a3b8 !important; }
-hr, [data-testid="stDivider"] { border-color: #162035 !important; }
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(145deg, #0c1928, #0d2040) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 14px !important;
-}
-[data-testid="metric-container"] {
-    background: linear-gradient(145deg, #0c1928, #0e2038) !important;
-    border: 1px solid #1a2e48 !important; border-radius: 12px !important;
-    padding: 20px 24px !important; box-shadow: 0 4px 24px rgba(0,0,0,0.45) !important;
-}
-[data-testid="stMetricValue"] { color: #f1f5f9 !important; font-weight: 700 !important; font-size: 22px !important; }
-[data-testid="stMetricLabel"] { color: #3f5470 !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 1px !important; font-weight: 600 !important; }
-.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #6d28d9, #7c3aed) !important;
-    border: 1px solid #8b5cf6 !important; color: #fff !important;
-    font-weight: 600 !important; border-radius: 8px !important;
-    box-shadow: 0 4px 16px rgba(124,58,237,0.3) !important;
-}
-.stButton > button[kind="primary"]:hover { box-shadow: 0 6px 22px rgba(124,58,237,0.5) !important; transform: translateY(-1px) !important; }
-.stDataFrame { border: 1px solid #1a2e48 !important; border-radius: 12px !important; overflow: hidden !important; }
-[data-testid="stAlert"] { border-radius: 10px !important; }
-[data-testid="stExpander"] { border: 1px solid #1a2e48 !important; border-radius: 10px !important; background-color: #0c1928 !important; }
-[data-testid="stSelectbox"] > div > div { background-color: #0c1928 !important; border-color: #1a2e48 !important; color: #c5d4e8 !important; border-radius: 8px !important; }
-.stSlider > div > div > div { background-color: #1a2e48 !important; }
-.stCheckbox label { color: #7a90a8 !important; }
-</style>
-""", unsafe_allow_html=True)
 
-# ── Constantes graphique sombre ───────────────────────────────────────────────
-_BG    = "#0c1928"
-_PAPER = "#060e1c"
-_GRID  = "#162035"
-_TICK  = "#3f5470"
+load_css()
 
-def dark_layout(title="", height=450):
-    return dict(
-        title=dict(text=title, font=dict(color="#c5d4e8", size=14), x=0.01),
-        plot_bgcolor=_BG, paper_bgcolor=_PAPER,
-        font=dict(color=_TICK, family="Inter, sans-serif", size=12),
-        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, tickfont=dict(color=_TICK), zeroline=False),
-        legend=dict(bgcolor="rgba(12,25,40,0.95)", bordercolor=_GRID, borderwidth=1,
-                    font=dict(color="#7a90a8", size=12)),
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor="#0e2038", bordercolor=_GRID, font=dict(color="#f1f5f9")),
-        height=height, margin=dict(l=0, r=0, t=44, b=0),
-    )
+# Chargement catalogue
+ETF_CATALOG = get_etf_catalog()
+if not ETF_CATALOG:
+    st.error("Impossible de charger les ETF depuis la base de données.")
+    st.stop()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -80,12 +31,12 @@ with st.sidebar:
     )
     fenetre    = st.slider("Fenêtre d'analyse (années)", min_value=3, max_value=15, value=10)
     projection = st.checkbox("Afficher la projection 12 mois", value=True)
-    lancer     = st.button("📈 Lancer la régression", type="primary", use_container_width=True)
+    lancer     = st.button("Lancer la régression", type="primary", use_container_width=True)
 
 etf = ETF_CATALOG[ticker]
 
 # ── En-tête ───────────────────────────────────────────────────────────────────
-st.markdown("# 📉 Régression Linéaire & Analyse de Tendance")
+st.markdown("# Régression Linéaire & Analyse de Tendance")
 st.caption("Module C — Modèle OLS, résidus et limites de la prédiction financière")
 st.divider()
 
@@ -238,17 +189,24 @@ if lancer:
 
     # Tableau de synthèse
     with st.expander("Tableau de synthèse complet"):
-        st.dataframe(pd.DataFrame({
-            "Indicateur": ["R²", "β₀ (Constante)", "β₁ (€/jour)", "Pente (%/an)",
-                           "P-value", "Durbin-Watson", "Observations"],
-            "Valeur":     [f"{res['r2']:.6f}", f"{res['beta0']:.4f}",
-                           f"{res['beta1']:+.6f}", f"{res['pente_annuelle_pct']:+.2f}%",
-                           p_fmt, f"{dw:.4f}", str(res["n_obs"])],
-        }), use_container_width=True, hide_index=True)
+       rows_html = ""
+       tableau = [
+           ("R²",              f"{res['r2']:.6f}",                      "Part de variance expliquée par le temps"),
+           ("β₀ (Constante)",  f"{res['beta0']:.4f} €",                 "Prix théorique au jour 0"),
+           ("β₁ (€/jour)",     f"{res['beta1']:+.6f}",                  "Hausse moyenne quotidienne"),
+           ("Pente (%/an)",    f"{res['pente_annuelle_pct']:+.2f}%",     "Rendement tendanciel annualisé"),
+           ("P-value",         p_fmt,                                    "Significativité de la pente"),
+           ("Durbin-Watson",   f"{dw:.4f}",                              dw_interp),
+           ("Observations",    str(res["n_obs"]),                        "Jours de trading inclus"),
+       ]
+       for indicateur, valeur, interpretation in tableau:
+           rows_html += f'<tr><td style="color:#7a90a8;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">{indicateur}</td><td style="color:#f1f5f9;font-weight:700;font-family:monospace;">{valeur}</td><td style="color:#475569;font-size:0.85rem;">{interpretation}</td></tr>'
+
+       st.markdown(f'<table class="etf-table"><thead><tr><th>Indicateur</th><th>Valeur</th><th>Interprétation</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
 
 else:
     with st.container(border=True):
-        st.markdown("### 📉 Analyse prête à démarrer")
+        st.markdown("### prête à démarrer")
         st.markdown(
             "Sélectionnez un ETF et une fenêtre temporelle dans le **panneau latéral**, "
             "puis cliquez sur **Lancer la régression** pour obtenir l'analyse OLS complète."
