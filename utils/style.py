@@ -6,7 +6,9 @@ _PAPER = "#060e1c"
 _GRID  = "#162035"
 _TICK  = "#3f5470"
 
+#  CSS et thème graphique
 
+# charge style.css
 def load_css():
     """Charge le fichier CSS global depuis assets/style.css"""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +16,7 @@ def load_css():
     with open(css_path, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-
+# thème sombre pour les graphiques Plotly
 def dark_layout(title="", height=400):
     """Retourne un dict de layout Plotly avec le thème sombre."""
     return dict(

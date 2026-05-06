@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 
+# contient toute la logique métier du simulateur DCA
 
+# algorithme mois par mois
 def run_dca_simulation(df_prices, capital_initial, versement_mensuel, ter_annuel, date_debut, date_fin):
     df = df_prices.loc[date_debut:date_fin].copy()
     if df.empty:
@@ -42,11 +44,11 @@ def run_dca_simulation(df_prices, capital_initial, versement_mensuel, ter_annuel
 
     return pd.DataFrame(results)
 
-
+# simulation sans TER pour comparaison
 def run_dca_sans_frais(df_prices, capital_initial, versement_mensuel, date_debut, date_fin):
     return run_dca_simulation(df_prices, capital_initial, versement_mensuel, 0.0, date_debut, date_fin)
 
-
+# calcul de référence épargne sans risque
 def calcul_livret_a(capital_initial, versement_mensuel, taux_annuel, n_mois):
     taux_mensuel = taux_annuel / 12
     valeurs = []
@@ -56,7 +58,7 @@ def calcul_livret_a(capital_initial, versement_mensuel, taux_annuel, n_mois):
         valeurs.append(valeur)
     return valeurs
 
-
+# CAGR, gain net, frais totaux
 def calcul_metriques(df_sim, n_annees):
     if df_sim.empty:
         return {}
