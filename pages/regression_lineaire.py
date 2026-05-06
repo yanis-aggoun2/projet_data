@@ -10,9 +10,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.etf_data import ETF_CATALOG, get_historical_data
 from utils.regression_engine import run_regression
 
-st.set_page_config(page_title="Regression Lineaire", page_icon="📉", layout="wide")
+st.set_page_config(page_title="Regression Lineaire", layout="wide")
 
-st.title("📉 Régression Linéaire & Analyse de Tendance")
+st.title("Régression Linéaire & Analyse de Tendance")
 st.markdown("---")
 
 # Paramètres dans le sidebar
@@ -67,6 +67,10 @@ if lancer:
     fig1.add_trace(go.Scatter(x=dates, y=res["Y_pred"], name="Droite OLS",
                               line=dict(color="#f97316", width=2.5)))
 
+
+    '''
+    On demande à l'utilisateur s'il souhaite projeter sur les douze prochains mois
+    '''
     if projection:
         last_date = dates[-1]
         dates_proj = pd.date_range(start=last_date, periods=253, freq="B")[1:]
