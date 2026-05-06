@@ -8,11 +8,12 @@ import streamlit as st
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-
 def get_connection():
-    return psycopg2.connect(DATABASE_URL)
+    try:
+        url = st.secrets["DATABASE_URL"]
+    except Exception:
+        url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(url)
 
 
 @st.cache_data(ttl=300)  # Après 5 minutes (ttl=300) → le cache expire et recharge depuis la DB
