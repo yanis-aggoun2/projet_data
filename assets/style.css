@@ -433,3 +433,91 @@ caption, .stCaption { color: #3f5470 !important; font-size: 12px !important; }
     border-left: 2px solid #3b82f6 !important;
 }    
 
+/* Badges Admin/User */
+.badge-admin {
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.3);
+    color: #a78bfa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.badge-user {
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.2);
+    color: #60a5fa;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.badge-active {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.badge-inactive {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.table-email {
+    color: #f1f5f9;
+    font-weight: 500;
+}
+
+.table-date {
+    color: #475569;
+    font-size: 0.85rem;
+}
+
+
+/* Tabs */
+[data-testid="stTabs"] [data-testid="stTab"] {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    padding: 0.6rem 1.2rem !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+[data-testid="stTabs"] [data-testid="stTab"]:hover {
+    color: #c5d4e8 !important;
+    background: transparent !important;
+    border-bottom: 2px solid #1a2e48 !important;
+}
+
+[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] {
+    color: #3b82f6 !important;
+    background: transparent !important;
+    border-bottom: 2px solid #3b82f6 !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    background: transparent !important;
+    border-bottom: 1px solid #1a2e48 !important;
+    gap: 0 !important;
+}
+
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
+
+/*   PAGE LOGIN */
+.login-logo { text-align: center; margin-bottom: 2rem; }
+.login-title { font-size: 2.8rem; font-weight: 800; color: #f1f5f9; text-align: center; margin-bottom: 0.3rem; font-family: 'Inter', sans-serif; }
+.login-title span { background: linear-gradient(135deg, #3b82f6, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.login-subtitle { text-align: center; color: #3f5470; font-size: 1rem; margin-bottom: 2rem; }
+.login-divider { border: none; border-top: 1px solid #1a2e48; margin: 1.5rem 0; }
+.secure-badge { display: flex; align-items: center; justify-content: center; gap: 0.4rem; color: #3f5470; font-size: 0.78rem; margin-top: 1.5rem; }

@@ -9,3 +9,5 @@ statsmodels>=0.14.0
 psycopg2-binary
 python-dotenv
 pytest
+bcrypt
+justetf-scraping @ git+https://github.com/druzsan/justetf-scraping.git

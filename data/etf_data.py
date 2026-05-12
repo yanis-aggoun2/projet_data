@@ -22,21 +22,21 @@ def get_etf_catalog() -> dict:
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT code, nom, indice, gestionnaire, ter, pea, ticker_yf, description
+            SELECT ticker, nom, indice_replique, gestionnaire, ter, eligible_pea, ticker_yf, description
             FROM etf
         """)
         rows = cursor.fetchall()
         catalog = {}
         for row in rows:
-            code, nom, indice, gestionnaire, ter, pea, ticker_yf, description = row
-            catalog[code] = {
-                "nom": nom,
-                "indice": indice,
-                "gestionnaire": gestionnaire,
-                "ter": float(ter),
+            ticker, nom, indice, gestionnaire, ter, pea, ticker_yf, description = row
+            catalog[ticker] = {
+                "nom": nom or "",
+                "indice": indice or "",
+                "gestionnaire": gestionnaire or "",
+                "ter": float(ter) if ter else 0.0,
                 "pea": bool(pea),
-                "ticker_yf": ticker_yf,
-                "description": description
+                "ticker_yf": ticker_yf or "",
+                "description": description or ""
             }
         return catalog
     finally:

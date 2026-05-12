@@ -10,6 +10,13 @@ from data.etf_data import get_etf_catalog, get_historical_data
 from utils.dca_engine import run_dca_simulation, run_dca_sans_frais, calcul_livret_a, calcul_metriques
 from utils.style import load_css, dark_layout, _BG, _PAPER, _GRID, _TICK
 
+from utils.auth import is_logged_in, is_admin
+
+# Pour les pages utilisateur
+if not is_logged_in():
+    st.error("❌ Connectez-vous pour accéder à cette page.")
+    st.stop()
+
 
 load_css()
 
