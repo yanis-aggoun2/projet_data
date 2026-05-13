@@ -334,15 +334,26 @@ caption, .stCaption { color: #3f5470 !important; font-size: 12px !important; }
 
 
 /* Tableau ETF custom */
+[data-testid="stMarkdownContainer"]:has(.etf-table) {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #1a2e48;
+    border-radius: 12px;
+    display: block;
+}
+
 .etf-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.88rem;
     margin-top: 0.5rem;
 }
+
 .etf-table thead tr {
     border-bottom: 1px solid #1a2e48;
 }
+
 .etf-table thead th {
     padding: 0.8rem 1.2rem;
     text-align: left;
@@ -351,19 +362,27 @@ caption, .stCaption { color: #3f5470 !important; font-size: 12px !important; }
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: #3f5470;
+    position: sticky;
+    top: 0;
+    background: #0c1928;
+    z-index: 1;
 }
+
 .etf-table tbody tr {
     border-bottom: 1px solid #0f1f33;
     transition: background 0.15s;
 }
+
 .etf-table tbody tr:hover {
     background: rgba(59,130,246,0.04);
 }
+
 .etf-table tbody td {
     padding: 1rem 1.2rem;
     color: #c5d4e8;
     vertical-align: middle;
 }
+
 .etf-ticker {
     background: rgba(59,130,246,0.1);
     border: 1px solid rgba(59,130,246,0.2);

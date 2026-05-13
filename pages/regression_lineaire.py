@@ -52,7 +52,7 @@ if lancer:
     date_debut = (datetime.today() - timedelta(days=fenetre * 365)).strftime("%Y-%m-%d")
 
     with st.spinner("Calcul de la régression OLS…"):
-        df_prix = get_historical_data(etf["ticker_yf"], date_debut)
+        df_prix = get_historical_data(etf["isin"], date_debut)
 
     if df_prix.empty or len(df_prix) < 60:
         st.error("Données insuffisantes pour effectuer la régression (< 60 observations).")

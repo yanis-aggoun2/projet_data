@@ -46,6 +46,6 @@ with col:
     st.markdown("""
     <div class="secure-badge">🔒 Connexion sécurisée · Données chiffrées</div>
     <div style="text-align:center;color:#1e3250;font-size:0.75rem;margin-top:0.8rem;">
-        M2 MIAGE · Université Paris-Saclay · 2024–2025
+        M2 MIAGE · Université Paris-Saclay · 2025–2026
     </div>
     """, unsafe_allow_html=True)

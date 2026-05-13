@@ -62,11 +62,10 @@ with col_info:
         pea = "✅ Éligible PEA" if etf["pea"] else "❌ Non éligible PEA"
         st.markdown(f"**{pea}**")
         st.divider()
-        st.caption(etf["description"])
 
 with col_graph:
     with st.spinner("Chargement des données…"):
-        df = get_historical_data(etf["ticker_yf"], date_debut)
+        df = get_historical_data(etf["isin"], date_debut)
 
     if not df.empty:
         prix_debut = float(df["prix_cloture"].iloc[0])
@@ -112,8 +111,8 @@ jours_comp = {"1 an": 365, "3 ans": 1095, "5 ans": 1825, "10 ans": 3650}[periode
 date_comp  = (datetime.today() - timedelta(days=jours_comp)).strftime("%Y-%m-%d")
 
 if st.button("Lancer la comparaison", type="primary"):
-    df_a = get_historical_data(ETF_CATALOG[etf_a]["ticker_yf"], date_comp)
-    df_b = get_historical_data(ETF_CATALOG[etf_b]["ticker_yf"], date_comp)
+    df_a = get_historical_data(ETF_CATALOG[etf_a]["isin"], date_comp)
+    df_b = get_historical_data(ETF_CATALOG[etf_b]["isin"], date_comp)
 
     if not df_a.empty and not df_b.empty:
         perf_a = df_a["prix_cloture"] / df_a["prix_cloture"].iloc[0] * 100
@@ -164,54 +163,3 @@ if st.button("Lancer la comparaison", type="primary"):
         st.markdown(f'<table class="etf-table"><thead><tr><th>Ticker</th><th>Nom</th><th>Performance</th><th>Volatilité ann.</th><th>TER annuel</th><th>Éligibilité</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
     else:
         st.error("Impossible de charger les données pour un ou plusieurs ETF.")
-
-# # Ajouter un nouvel ETF
-# st.markdown("---")
-# st.markdown("### :material/add_circle: Ajouter un nouvel ETF")
-
-# with st.expander("Formulaire d'ajout"):
-#     st.info("Le ticker Yahoo Finance est utilisé pour récupérer les données. Exemple : CW8.PA, IWDA.AS, SP5.PA")
-
-#     col_f1, col_f2 = st.columns(2)
-#     with col_f1:
-#         new_code = st.text_input("Code (ex: IWDA)", max_chars=10).strip().upper()
-#         new_nom = st.text_input("Nom complet (ex: iShares Core MSCI World)")
-#         new_indice = st.text_input("Indice répliqué (ex: MSCI World)")
-#         new_ticker_yf = st.text_input("Ticker Yahoo Finance (ex: IWDA.AS)")
-#     with col_f2:
-#         new_gestionnaire = st.text_input("Gestionnaire (ex: BlackRock)")
-#         new_ter = st.number_input("TER annuel (%)", min_value=0.0, max_value=5.0,
-#                                    value=0.20, step=0.01, format="%.2f")
-#         new_pea = st.selectbox("Eligible PEA", ["Non", "Oui"]) == "Oui"
-#         new_description = st.text_area("Description", height=80)
-
-#     if st.button("Enregistrer l'ETF", type="primary"):
-#         if not new_code or not new_nom or not new_ticker_yf:
-#             st.error("Les champs Code, Nom et Ticker Yahoo Finance sont obligatoires.")
-#         elif new_code in ETF_CATALOG:
-#             st.error(f"L'ETF '{new_code}' existe déjà dans la base.")
-#         else:
-#             with st.spinner("Vérification du ticker Yahoo Finance..."):
-#                 df_test = get_historical_data(
-#                     new_ticker_yf,
-#                     (datetime.today() - timedelta(days=30)).strftime("%Y-%m-%d")
-#                 )
-#             if df_test.empty:
-#                 st.error(f"Le ticker '{new_ticker_yf}' est introuvable sur Yahoo Finance. Vérifiez et réessayez.")
-#             else:
-#                 try:
-#                     conn = get_connection()
-#                     cursor = conn.cursor()
-#                     cursor.execute("""
-#                         INSERT INTO etf (code, nom, indice, gestionnaire, ter, pea, ticker_yf, description)
-#                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-#                     """, (new_code, new_nom, new_indice, new_gestionnaire,
-#                           new_ter / 100, new_pea, new_ticker_yf, new_description))
-#                     conn.commit()
-#                     get_etf_catalog.clear()
-#                     conn.close()
-#                     st.success(f"✅ ETF '{new_code} — {new_nom}' ajouté !")
-#                     st.balloons()
-#                     st.rerun()
-#                 except Exception as e:
-#                     st.error(f"Erreur lors de l'insertion : {e}")

@@ -61,7 +61,7 @@ if lancer:
         st.stop()
 
     with st.spinner("Simulation en cours…"):
-        df_prix = get_historical_data(etf["ticker_yf"], str(date_debut), str(date_fin))
+        df_prix = get_historical_data(etf["isin"], str(date_debut), str(date_fin))
 
     if df_prix.empty:
         st.error("Impossible de récupérer les données historiques.")

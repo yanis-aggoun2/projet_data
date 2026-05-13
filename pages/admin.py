@@ -107,9 +107,9 @@ with tab2:
             ter = info["ter"] * 100
             ter_class = "low" if ter < 0.20 else "mid" if ter < 0.40 else "high"
             pea_badge = '<span class="pea-yes">✓ PEA</span>' if info["pea"] else '<span class="pea-no">Non éligible</span>'
-            rows_html += f'<tr><td><span class="etf-ticker">{code}</span></td><td><div class="etf-nom">{info["nom"]}</div><div class="etf-indice">{info["indice"]}</div></td><td>{info["gestionnaire"]}</td><td><span class="etf-ter {ter_class}">{ter:.2f}%</span></td><td>{pea_badge}</td></tr>'
+            rows_html += f'<tr><td><span class="etf-ticker">{code}</span></td><td style="color:#475569;font-family:monospace;font-size:0.82rem;">{info["isin"]}</td><td><div class="etf-nom">{info["nom"]}</div><div class="etf-indice">{info["indice"]}</div></td><td>{info["gestionnaire"]}</td><td><span class="etf-ter {ter_class}">{ter:.2f}%</span></td><td>{pea_badge}</td></tr>'
 
-        st.markdown(f'<table class="etf-table"><thead><tr><th>Ticker</th><th>Nom / Indice</th><th>Gestionnaire</th><th>TER</th><th>PEA</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
+        st.markdown(f'<table class="etf-table"><thead><tr><th>Ticker</th><th>ISIN</th><th>Nom / Indice</th><th>Gestionnaire</th><th>TER</th><th>PEA</th></tr></thead><tbody>{rows_html}</tbody></table>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -118,19 +118,18 @@ with tab2:
     with st.form("add_etf"):
         col_a, col_b = st.columns(2)
         with col_a:
-            new_code = st.text_input("Code (ex: IWDA)", max_chars=10).strip().upper()
+            new_code = st.text_input("Ticker (ex: IWDA)", max_chars=12).strip().upper()
+            new_isin = st.text_input("ISIN (ex: IE00B4L5Y983)", max_chars=12).strip().upper()
             new_nom = st.text_input("Nom complet")
             new_indice = st.text_input("Indice répliqué")
-            new_ticker_yf = st.text_input("Ticker Yahoo Finance (ex: IWDA.AS)")
         with col_b:
             new_gestionnaire = st.text_input("Gestionnaire")
             new_ter = st.number_input("TER annuel (%)", min_value=0.0, max_value=5.0, value=0.20, step=0.01, format="%.2f")
             new_pea = st.selectbox("Eligible PEA", ["Non", "Oui"]) == "Oui"
-            new_description = st.text_area("Description", height=80)
 
         if st.form_submit_button("Ajouter l'ETF", type="secondary"):
-            if not new_code or not new_nom or not new_ticker_yf:
-                st.error("Code, Nom et Ticker sont obligatoires.")
+            if not new_code or not new_nom or not new_isin:
+                st.error("Ticker, ISIN et Nom sont obligatoires.")
             elif new_code in ETF_CATALOG:
                 st.error(f"L'ETF '{new_code}' existe déjà.")
             else:
@@ -138,10 +137,10 @@ with tab2:
                     conn = get_connection()
                     cursor = conn.cursor()
                     cursor.execute("""
-                        INSERT INTO etf (code, nom, indice, gestionnaire, ter, pea, ticker_yf, description)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (new_code, new_nom, new_indice, new_gestionnaire,
-                          new_ter / 100, new_pea, new_ticker_yf, new_description))
+                        INSERT INTO etf (isin, ticker, nom, indice_replique, gestionnaire, ter, eligible_pea)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (new_isin, new_code, new_nom, new_indice,
+                          new_gestionnaire, new_ter / 100, new_pea))
                     conn.commit()
                     conn.close()
                     get_etf_catalog.clear()
@@ -166,80 +165,74 @@ with tab2:
                 "epg-longOnly", "epg-short", "epg-leveraged"
             ], help="epg-longOnly = ETFs long uniquement (recommandé)")
 
+        st.warning(f"⚠️ L'enrichissement fait {max_etfs} requêtes JustETF — environ {max_etfs * 0.3:.0f} secondes.")
+
         if st.button(":material/sync: Lancer l'import", type="primary"):
-            with st.spinner("Scraping JustETF en cours..."):
-                from utils.justetf_scraper import fetch_etfs_from_justetf
-                df = fetch_etfs_from_justetf(strategy=strategy, max_etfs=max_etfs)
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            from utils.justetf_scraper import fetch_etfs_from_justetf
+            df = fetch_etfs_from_justetf(
+                strategy=strategy,
+                max_etfs=max_etfs,
+                progress_bar=progress_bar,
+                status_text=status_text
+            )
 
             if df.empty:
                 st.error("Aucun ETF récupéré.")
             else:
+                progress_bar.progress(1.0)
+                status_text.text("✅ Import terminé")
                 st.session_state.df_justetf = df
-                st.success(f"✅ {len(df)} ETFs récupérés depuis JustETF")
+                st.rerun()
 
         # Afficher aperçu + bouton confirmer si df disponible
         if "df_justetf" in st.session_state and st.session_state.df_justetf is not None:
-            df = st.session_state.df_justetf
+            df = st.session_state.df_justetf.copy()
 
-            st.dataframe(
-                df[["ticker", "nom", "indice_replique", "gestionnaire", "ter", "eligible_pea"]],
-                use_container_width=True, hide_index=True
-            )
+            st.markdown("#### Aperçu — cochez les ETFs éligibles PEA")
 
-            if st.button(":material/save: Confirmer et sauvegarder en base", type="primary"):
-                from utils.justetf_scraper import save_etfs_to_db
-                with st.spinner("Insertion en base..."):
-                    inseres, ignores = save_etfs_to_db(df)
-                get_etf_catalog.clear()
-                st.session_state.df_justetf = None
-                st.success(f"✅ {inseres} ETFs insérés, {ignores} ignorés.")
-                st.rerun()
-                    
-    st.divider()       
-    
-    st.markdown("### :material/auto_fix_high: Enrichir les ETFs depuis Yahoo Finance")
-    st.caption("Résout le ticker Yahoo Finance et récupère nom, gestionnaire, indice, TER, description pour chaque ETF.")
+            # En-tête tableau
+            col1, col2, col3, col4, col5 = st.columns([1.5, 1, 3, 2, 1])
+            col1.markdown("**ISIN**")
+            col2.markdown("**Ticker**")
+            col3.markdown("**Nom**")
+            col4.markdown("**Indice**")
+            col5.markdown("**PEA ✓**")
 
-    ETF_CATALOG = get_etf_catalog()
-    tickers_sans_yf = [t for t, info in ETF_CATALOG.items() if not info.get("ticker_yf")]
-    tickers_tous = list(ETF_CATALOG.keys())
+            st.markdown("<hr style='border-color:#1a2e48;margin:0.3rem 0'>", unsafe_allow_html=True)
 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        mode = st.radio("ETFs à enrichir", [
-            f"Sans ticker YF ({len(tickers_sans_yf)})",
-            f"Tous ({len(tickers_tous)})"
-        ])
+            pea_values = {}
+            for i, row in df.iterrows():
+                col1, col2, col3, col4, col5 = st.columns([1.5, 1, 3, 2, 1])
+                col1.caption(row["isin"])
+                col2.markdown(f'<span class="etf-ticker">{row["ticker"]}</span>', unsafe_allow_html=True)
+                col3.caption(row["nom"][:50])
+                col4.caption(row["indice_replique"][:40] if row["indice_replique"] else "—")
+                pea_values[i] = col5.checkbox("", value=False, key=f"pea_{i}_{row['ticker']}")
 
-    tickers_a_enrichir = tickers_sans_yf if "Sans" in mode else tickers_tous
-    st.info(f"{len(tickers_a_enrichir)} ETF(s) à enrichir — environ {len(tickers_a_enrichir) * 0.5:.0f} secondes")
+            st.markdown("<br>", unsafe_allow_html=True)
 
-    if st.button(":material/auto_fix_high: Lancer l'enrichissement", type="primary"):
-        from utils.etf_enricher import enrich_all_etfs
-        from data.etf_data import get_etf_catalog
+            col_confirm, col_cancel = st.columns([1, 3])
+            with col_confirm:
+                if st.button(":material/save: Confirmer et sauvegarder", type="primary", use_container_width=True):
+                    # Appliquer les valeurs PEA cochées
+                    for i, pea_val in pea_values.items():
+                        df.at[i, "eligible_pea"] = pea_val
 
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        rapport = enrich_all_etfs(tickers_a_enrichir, progress_bar, status_text)
-
-        get_etf_catalog.clear()
-        progress_bar.progress(1.0)
-        status_text.text("✅ Enrichissement terminé")
-
-        st.success(f"✅ {rapport['succes']} enrichis, ❌ {rapport['echecs']} non trouvés")
-
-        # Tableau résultat
-        rows_html = ""
-        for d in rapport["details"]:
-            color = "#10b981" if "✅" in d["statut"] else "#ef4444"
-            rows_html += f'<tr><td><span class="etf-ticker">{d["ticker"]}</span></td><td style="color:{color};font-family:monospace;">{d["ticker_yf"] or "—"}</td><td style="color:{color};">{d["statut"]}</td></tr>'
-
-        st.markdown(
-            f'<table class="etf-table"><thead><tr><th>Ticker</th><th>Ticker Yahoo Finance</th><th>Statut</th></tr></thead><tbody>{rows_html}</tbody></table>',
-            unsafe_allow_html=True
-        )
-        st.rerun()   
+                    from utils.justetf_scraper import save_etfs_to_db
+                    with st.spinner("Insertion en base..."):
+                        inseres, ignores = save_etfs_to_db(df)
+                    get_etf_catalog.clear()
+                    st.session_state.df_justetf = None
+                    st.success(f"✅ {inseres} ETFs insérés, {ignores} déjà existants ignorés.")
+                    st.rerun()
+            with col_cancel:
+                if st.button(":material/close: Annuler", use_container_width=True):
+                    st.session_state.df_justetf = None
+                    st.rerun()
+                
         
     st.divider()          
     # Supprimer un ETF
@@ -252,7 +245,7 @@ with tab2:
             try:
                 conn = get_connection()
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM etf WHERE code = %s", (code_to_delete,))
+                cursor.execute("DELETE FROM etf WHERE ticker = %s", (code_to_delete,))
                 conn.commit()
                 conn.close()
                 get_etf_catalog.clear()

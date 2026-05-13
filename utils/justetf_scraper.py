@@ -1,36 +1,63 @@
 import pandas as pd
 import streamlit as st
 from data.etf_data import get_connection
+import time
 
 
-def fetch_etfs_from_justetf(strategy: str = "epg-longOnly", max_etfs: int = 50) -> pd.DataFrame:
+def fetch_etfs_from_justetf(strategy: str = "epg-longOnly", max_etfs: int = 50, progress_bar=None, status_text=None) -> pd.DataFrame:
     try:
         import justetf_scraping
+
+        if status_text:
+            status_text.text("Récupération de la liste JustETF...")
 
         df = justetf_scraping.load_overview(strategy=strategy)
 
         if df.empty:
             return pd.DataFrame()
 
-        df_clean = pd.DataFrame()
-        df_clean["ticker"]          = df["ticker"].str.strip() if "ticker" in df.columns else df.index
-        df_clean["nom"]             = df["name"].str.strip() if "name" in df.columns else ""
-        df_clean["indice_replique"] = ""
-        df_clean["gestionnaire"]    = ""
-        df_clean["ter"]             = pd.to_numeric(df.get("ter", 0), errors="coerce") / 100
-        df_clean["eligible_pea"]    = False
-        df_clean["ticker_yf"]       = ""
-        df_clean["description"]     = ""
+        df = df.reset_index().head(max_etfs)
+        total = len(df)
+        results = []
 
-        df_clean = df_clean.dropna(subset=["ticker"])
-        df_clean = df_clean[df_clean["ticker"] != ""]
+        for i, row in df.iterrows():
+            ticker = str(row.get("ticker", "")).strip()
+            isin = str(row.get("isin", "")).strip()
 
-        return df_clean.head(max_etfs)
+            if status_text:
+                status_text.text(f"Enrichissement {i+1}/{total} : {ticker}...")
+            if progress_bar:
+                progress_bar.progress((i + 1) / total)
+
+            # Détails via get_etf_overview
+            indice = ""
+            gestionnaire = ""
+            try:
+                details = justetf_scraping.get_etf_overview(isin)
+                indice       = details.get("index", "") or ""
+                gestionnaire = details.get("fund_provider", "") or ""
+            except Exception:
+                pass
+
+            results.append({
+                "isin":            isin,
+                "ticker":          ticker,
+                "nom":             str(row.get("name", "")).strip(),
+                "indice_replique": indice,
+                "gestionnaire":    gestionnaire,
+                "ter":             float(row.get("ter", 0)) / 100 if pd.notna(row.get("ter")) else None,
+                "eligible_pea":    False,
+            })
+
+            time.sleep(0.3)
+
+        return pd.DataFrame(results)
 
     except Exception as e:
-        st.error(f"Erreur scraping JustETF : {e}")
+        st.error(f"Erreur : {type(e).__name__}: {e}")
+        import traceback
+        st.code(traceback.format_exc())
         return pd.DataFrame()
-
 
 def save_etfs_to_db(df: pd.DataFrame) -> tuple[int, int]:
     if df.empty:
@@ -45,18 +72,17 @@ def save_etfs_to_db(df: pd.DataFrame) -> tuple[int, int]:
         for _, row in df.iterrows():
             try:
                 cursor.execute("""
-                    INSERT INTO etf (ticker, nom, indice_replique, gestionnaire, ter, eligible_pea, ticker_yf, description)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (ticker) DO NOTHING
+                    INSERT INTO etf (isin, ticker, nom, indice_replique, gestionnaire, ter, eligible_pea)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (isin) DO NOTHING
                 """, (
+                    str(row.get("isin", "")),
                     str(row.get("ticker", "")),
                     str(row.get("nom", "")),
                     str(row.get("indice_replique", "")),
                     str(row.get("gestionnaire", "")),
                     float(row.get("ter", 0)) if pd.notna(row.get("ter")) else None,
                     bool(row.get("eligible_pea", False)),
-                    str(row.get("ticker_yf", "")),
-                    str(row.get("description", "")),
                 ))
                 if cursor.rowcount > 0:
                     inseres += 1
